@@ -21,7 +21,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdio.h>
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -51,7 +52,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
-
+void display_digit(uint8_t digit);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -90,7 +91,8 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-
+  uint8_t count = 0;
+  uint8_t last_push_state = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -98,19 +100,59 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
+	    int push = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_8);
+	    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, GPIO_PIN_SET); // Display ON indicator
 
+	    // Detect rising edge: push was 0, now 1
+	    if (push == 1 && last_push_state == 0)
+	    {
+	        count = (count + 1) % 10; // Wrap around after 9
+	    }
+	    last_push_state = push;
+
+	    // Show the current count on 7-segment
+	    display_digit(count);
+	    // Below 3 lines are
+		char msg[30];
+		sprintf(msg, "Count: %d\r\n", count);
+		HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
     /* USER CODE BEGIN 3 */
-	  int push = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_8);
-	  if(push == 1){
-		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
-	  }
-	  else{
-		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
-	  }
   }
   /* USER CODE END 3 */
 }
 
+void display_digit(uint8_t digit)
+{
+    // Segment pattern for digits 0–9 (common cathode)
+    // Segments:      a  b  c  d  e  f  g
+    // Connected to:  PA1 PA4 PA6 PA7 PA9 PA10 PA11 (GPIOA pins)
+    // Bit order:     g  f  e  d  c  b  a
+    // 1 = segment on, 0 = segment off
+    const uint8_t segment_map[10] = {
+        0b00111111, // 0: a,b,c,d,e,f
+        0b00000110, // 1: b,c
+        0b01011011, // 2: a,b,g,e,d
+        0b01001111, // 3: a,b,g,c,d
+        0b01100110, // 4: f,g,b,c
+        0b01101101, // 5: a,f,g,c,d
+        0b01111101, // 6: a,f,g,e,d,c
+        0b00000111, // 7: a,b,c
+        0b01111111, // 8: a,b,c,d,e,f,g
+        0b01101111  // 9: g,f,a,b,c,d
+    };
+
+    // Validate input; if digit is invalid, turn off all segments
+    uint8_t seg = (digit <= 9) ? segment_map[digit] : 0x00;
+
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1,  (seg & 0x01) ? GPIO_PIN_SET : GPIO_PIN_RESET); // a (bit 0)
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4,  (seg & 0x02) ? GPIO_PIN_SET : GPIO_PIN_RESET); // b (bit 1)
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6,  (seg & 0x04) ? GPIO_PIN_SET : GPIO_PIN_RESET); // c (bit 2)
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7,  (seg & 0x08) ? GPIO_PIN_SET : GPIO_PIN_RESET); // d (bit 3)
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_9,  (seg & 0x10) ? GPIO_PIN_SET : GPIO_PIN_RESET); // e (bit 4)
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, (seg & 0x20) ? GPIO_PIN_SET : GPIO_PIN_RESET); // f (bit 5)
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_11, (seg & 0x40) ? GPIO_PIN_SET : GPIO_PIN_RESET); // g (bit 6)
+
+}
 /**
   * @brief System Clock Configuration
   * @retval None
@@ -209,7 +251,9 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1|GPIO_PIN_4|LD2_Pin|GPIO_PIN_6
+                          |GPIO_PIN_7|GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_11
+                          |GPIO_PIN_12, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
@@ -217,12 +261,16 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : LD2_Pin */
-  GPIO_InitStruct.Pin = LD2_Pin;
+  /*Configure GPIO pins : PA1 PA4 LD2_Pin PA6
+                           PA7 PA9 PA10 PA11
+                           PA12 */
+  GPIO_InitStruct.Pin = GPIO_PIN_1|GPIO_PIN_4|LD2_Pin|GPIO_PIN_6
+                          |GPIO_PIN_7|GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_11
+                          |GPIO_PIN_12;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PA8 */
   GPIO_InitStruct.Pin = GPIO_PIN_8;
