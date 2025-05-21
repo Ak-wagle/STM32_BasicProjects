@@ -138,7 +138,7 @@ int main(void)
 		  last_tick = now;
 	  	  }
 
-	  if (btn_press == 1) {
+	  if (btn_press) {
 		  printf("Button Pressed \t \n");
 		  ++blink_delay;
 
