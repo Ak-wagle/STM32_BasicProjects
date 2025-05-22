@@ -137,9 +137,11 @@ int main(void)
 
 	  if (now >= next_change) {
 		  __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_1, pwm_value);
-		  __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_2, pwm_value);
+		  __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_2, 1000 - pwm_value);
 		  __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, pwm_value);
-		  __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, pwm_value);
+		  __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, 1000 - pwm_value);
+
+		  // change from 1000 - pwm_value to just pwm_value if u want every LED to glow in same order
 
 		  pwm_value += pwm_change;
 
