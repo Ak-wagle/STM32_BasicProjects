@@ -140,7 +140,7 @@ int main(void)
 		  if (pwm_value == 0) pwm_change = 1;
 		  if (pwm_value == 1000) pwm_change = -1;
 
-		  next_change = now + 100;
+		  next_change = now + 10;
 	  }
 	  ++loop_cnt;
     /* USER CODE END WHILE */
