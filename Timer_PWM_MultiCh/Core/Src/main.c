@@ -73,6 +73,11 @@ int _write(int fd, char* ptr, int len) {
   }
   return -1;
 }
+
+/* Tried optimiztion But not working */
+//inline uint32_t HAL_GetTick(void) {
+//	return uwTick;
+//}
 /* USER CODE END 0 */
 
 /**
@@ -129,6 +134,9 @@ int main(void)
   while (1)
   {
 	  now = uwTick;
+
+	  /* try the following for optimization (failed earlier )*/
+//	  now = HAL_GetTick();
 	  if (now >= next_tick) {
 		  printf("Tick %lu (loop = %lu)\n", now / 1000, loop_cnt);
 		  loop_cnt = 0;
